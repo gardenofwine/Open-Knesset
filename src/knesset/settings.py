@@ -70,11 +70,24 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.flatpages.middleware.FlatpageFallbackMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',    
+    'django.contrib.messages.middleware.MessageMiddleware', # keep after session
+    'django.middleware.csrf.CsrfViewMiddleware',
     'pagination.middleware.PaginationMiddleware',
     # make sure to keep the DebugToolbarMiddleware last
     'debug_toolbar.middleware.DebugToolbarMiddleware',
 )
+
+AUTHENTICATION_BACKENDS = (
+    'social_auth.backends.twitter.TwitterBackend',
+    'social_auth.backends.facebook.FacebookBackend',
+    'social_auth.backends.google.GoogleOAuth2Backend',
+    'social_auth.backends.google.GoogleBackend',
+    'social_auth.backends.contrib.github.GithubBackend',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
+SOCIAL_AUTH_CREATE_USERS = True
+SOCIAL_AUTH_FORCE_RANDOM_USERNAME = False
 
 ROOT_URLCONF = 'knesset.urls'
 
@@ -94,6 +107,7 @@ INSTALLED_APPS = (
     'django.contrib.comments',
     'django.contrib.sitemaps',
     'django.contrib.flatpages',
+    'django.contrib.messages',
     'piston',                       # friends apps
     'debug_toolbar',
     'tagging',
@@ -114,6 +128,8 @@ INSTALLED_APPS = (
     'djangoratings',
     'voting',
     'compressor',
+    'social_auth',
+    'devserver',
     'knesset',
     'knesset.auxiliary',                  # knesset apps
     'knesset.mks',
@@ -131,6 +147,7 @@ INSTALLED_APPS = (
     'knesset.events',
     'knesset.video',
     'knesset.okhelptexts',
+    'tastypie',
 )
 
 TEMPLATE_CONTEXT_PROCESSORS = (
@@ -140,6 +157,8 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 "django.core.context_processors.media",
 "django.core.context_processors.request",
 "knesset.context.processor",
+"social_auth.context_processors.social_auth_by_name_backends",
+"social_auth.context_processors.social_auth_backends",
 )
 INTERNAL_IPS = ('127.0.0.1',)
 # Add the following line to your local_settings.py files to disable django-debug-toolar:
@@ -176,6 +195,14 @@ GOOGLE_MAPS_API_KEYS = {'dev': 'ABQIAAAAWCfW8hHVwzZc12qTG0qLEhQCULP4XOMyhPd8d_Nr
                         'prod': 'ABQIAAAAWCfW8hHVwzZc12qTG0qLEhR8lgcBs8YFes75W3FA_wpyzLVCpRTF-eaJoRuCHAJ2qzVu-Arahwp8QA'}
 GOOGLE_MAPS_API_KEY = GOOGLE_MAPS_API_KEYS['dev'] # override this in prod server
 
+# you need to generate a token and put it in local_settings.py
+# to generate a token run: bin/django update_videos --get-youtube-token
+YOUTUBE_AUTHSUB_TOKEN=''
+
+# you need to get a developer key and put it in local_settings.py
+# to get a developer key goto: http://code.google.com/apis/youtube/dashboard
+YOUTUBE_DEVELOPER_KEY=''
+
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
@@ -207,6 +234,10 @@ NOSE_ARGS = ['--with-xunit']
 SERIALIZATION_MODULES = {
     'oknesset' : 'auxiliary.serializers'
 }
+
+API_LIMIT_PER_PAGE = 1000
+
+SOUTH_TESTS_MIGRATE = False
 
 # if you add a local_settings.py file, it will override settings here
 # but please, don't commit it to git.

@@ -191,15 +191,15 @@
             <b>קחו את החוק לידיים!</b><br>
             בדיוק כמו שסרטוני יוטוב יכולים להיות מוטמעים באתרים אחרים, גם תהליך החקיקה הזה יכול להופיע בבלוגים, כתבות, פייסבוק וכן הלאה...<br>
             <b>העתיקו את קוד ההטמעה (html):</b><br>
-            <input type="text" readonly="readonly" value='<iframe frameborder="0" id="embed-widget" src="http://oknesset.org/object/{{object.id}}/embed/" style="width: 505px; height: 375px;"></iframe>'></br>
+            <input type="text" readonly="readonly" value='<iframe frameborder="0" id="embed-widget" src="http://oknesset.org/bill/{{object.id}}/embed/" style="width: 505px; height: 375px;"></iframe>'></br>
             <b>העתיקו את הלינק (להטמעה בפייסבוק):</b><br>
-            <input type="text" readonly="readonly" value='http://oknesset.org/object/{{object.id}}'/>
+            <input type="text" readonly="readonly" value='http://oknesset.org/bill/{{object.id}}'/>
 
         </div>
         <h1>{% bill_full_name object %}</h1>
         {% trans 'stage' %}: {% trans object.get_stage_display %}<br>
         {% trans 'stage date' %}: {{ object.stage_date }}<br>
-        {% for proposer in object.proposers.all %}
+        {% for proposer in proposers %}
             <a class="item dontwrap" id="detail-{{ proposer.id }}" href="{% url member-detail proposer.id %}">{% mk_card proposer %}</a>
         {% endfor %}<br>
         <div id="bill-canvas">
@@ -240,8 +240,8 @@
             {% if user.is_authenticated %}
                 <h3>{% trans "Tags" %}</h3>
                 <div id="tags">
-                    {% if object.tags %}
-                        {% for t in object.tags %}
+                    {% if tags %}
+                        {% for t in tags %}
                             <a id="tag_{{t.id}}" href="{% url bill-tag tag=t %}" class="tag">{{ t }}</a>
                         {% endfor %}
                     {% else %}
@@ -270,9 +270,9 @@
 
             {% else %}
                 <h3>{% trans "Tags" %}</h3>
-                {% if object.tags %}
+                {% if tags %}
                     <div id="tags">
-                    {% for t in object.tags %}
+                    {% for t in tags %}
                        <a href="{% url bill-tag tag=t %}" class="tag">{{ t }}</a>
                     {% endfor %}
                     </div>
@@ -420,15 +420,6 @@
                 {% endif %}
             {% endif %}
             </div>
-
-            {% if close_votes %}
-                <div id="suggested-votes">
-                <h2>{% trans 'suggested votes' %}</h2>
-                {% for v in close_votes %}
-                    <a href="{% url vote-detail v.0 %}">{{ v.1 }}</a><br>
-                {% endfor %}
-                </div>
-            {% endif %}
         </div>
     </div>
 {% endblock %}

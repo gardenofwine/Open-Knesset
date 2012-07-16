@@ -8,6 +8,7 @@ from django.http import (HttpResponse, HttpResponseRedirect, Http404,
 from django.shortcuts import get_object_or_404,render_to_response
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
+from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.core.cache import cache
 from django.template import RequestContext
@@ -62,9 +63,8 @@ class CommitteeDetailView(DetailView):
             ref_date = recent_meetings[0].date+datetime.timedelta(1) \
                     if recent_meetings.count() > 0 \
                     else datetime.datetime.now()
+            cached_context['future_meetings_list'] = cm.future_meetings()
             cur_date = datetime.datetime.now()
-            cached_context['future_meetings_list'] = \
-                    cm.events.filter(when__gt = cur_date)
             cached_context['protocol_not_yet_published_list'] = \
                     cm.events.filter(when__gt = ref_date, when__lte = cur_date)
             cache.set('committee_detail_%d' % cm.id, cached_context,
@@ -207,9 +207,7 @@ def edit_topic(request, committee_id, topic_id=None):
                 link.object_pk = topic.id
                 link.save()
 
-            m = request.user.message_set.create()
-            m.message = 'Topic has been updated.'
-            m.save()
+            messages.add_message(request, messages.INFO, 'Topic has been updated')
             return HttpResponseRedirect(
                 reverse('topic-detail',args=[topic.id]))
 

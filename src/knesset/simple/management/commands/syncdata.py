@@ -30,6 +30,13 @@ DATA_ROOT = getattr(settings, 'DATA_ROOT',
 
 logger = logging.getLogger("open-knesset.syncdata")
 
+try:
+    SPECIAL_COMMITTEES = map(lambda x: dict(name=x, commitee=Committee.objects.get(name=x)),
+                         [u"הוועדה המשותפת לנושא סביבה ובריאות",])
+except:
+    logger.warn("can't find special committees")
+    SPECIAL_COMMITTEES = {}
+
 # defines for finding explanation part in private proposals
 p_explanation = '</p><p class="explanation-header">דברי הסבר</p><p>'.decode('utf8')
 strong_explanation = re.compile('<strong>\s*ד\s*ב\s*ר\s*י\s*ה\s*ס\s*ב\s*ר\s*</strong>'.decode('utf8'),re.UNICODE)
@@ -50,7 +57,9 @@ class Command(NoArgsCommand):
         make_option('--laws', action='store_true', dest='laws',
             help="download and parse laws"),
         make_option('--update', action='store_true', dest='update',
-            help="online update of votes data."),
+            help="online update of data."),
+        make_option('--committees', action='store_true', dest='committees',
+            help="online update of committees data."),
 
     )
     help = "Downloads data from sources, parses it and loads it to the Django DB."
@@ -756,6 +765,11 @@ class Command(NoArgsCommand):
         SEARCH_URL = "http://www.knesset.gov.il/protocols/heb/protocol_search.aspx"
         cj = cookielib.LWPCookieJar()
         opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
+        committees_aliases = []
+        for c in Committee.objects.all():
+            if c.aliases:
+                committees_aliases += map(lambda x: (c, x), c.aliases.split(","))
+
         urllib2.install_opener(opener)
 
 
@@ -830,25 +844,35 @@ class Command(NoArgsCommand):
             updated_protocol = False
             if not cm.protocol_text:
                 cm.protocol_text = self.get_committee_protocol_text(link)
+                # check if the protocol is from the wrong commitee
+                for i in committees_aliases:
+                    if i[1] in cm.protocol_text[:300]:
+                        cm.committee = i[0]
+                        break
                 updated_protocol = True
+
             cm.save()
 
             if updated_protocol:
                 cm.create_protocol_parts()
-            try:
-                r = re.search("חברי הו?ועדה(.*?)(\n(רש(מים|מות|מו|מ|מת|ם|מה)|קצר(נים|ניות|ן|נית))[\s|:])".decode('utf8'),cm.protocol_text, re.DOTALL).group(1)
+            self.find_attending_members(cm, mks, mk_names)
 
-                s = r.split('\n')
-                #s = [s0.replace(' - ',' ').replace("'","").replace(u"”",'').replace('"','').replace("`","").replace("(","").replace(")","").replace(u'\xa0',' ').replace(' ','-') for s0 in s]
-                for (i,name) in enumerate(mk_names):
-                    for s0 in s:
-                        if s0.find(name)>=0:
-                            #print "found %s in %s" % (m.name, str(cm.id))
-                            cm.mks_attended.add(mks[i])
-            except Exception:
-                exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
-                logger.debug("%s%s", ''.join(traceback.format_exception(exceptionType, exceptionValue, exceptionTraceback)), '\nCommitteeMeeting.id='+str(cm.id))
-            logger.debug('added %d members' % cm.mks_attended.count())
+    def find_attending_members(self,cm, mks, mk_names):
+        try:
+            r = re.search("חברי הו?ועדה(.*?)(\n[^\n]*(רש(מים|מות|מו|מ|מת|ם|מה)|קצר(נים|ניות|ן|נית))[\s|:])".decode('utf8'),cm.protocol_text, re.DOTALL).group(1)
+            s = r.split('\n')
+            for (i,name) in enumerate(mk_names):
+                for s0 in s:
+                    if s0.find(name)>=0:
+                        cm.mks_attended.add(mks[i])
+        except Exception:
+            exceptionType, exceptionValue, exceptionTraceback = sys.exc_info()
+            logger.debug("%s%s", ''.join(traceback.format_exception(exceptionType,
+                                                                    exceptionValue,
+                                                                    exceptionTraceback)),
+                         '\nCommitteeMeeting.id='+str(cm.id))
+        logger.debug('meeting %d now had %d attending members' % (cm.id,
+                                                                  cm.mks_attended.count()))
 
     def get_committee_protocol_text(self, url):
         if url.find('html'):
@@ -1092,6 +1116,8 @@ class Command(NoArgsCommand):
                     b.save()
                 for m in pl.proposers.all(): # add current proposers to bill proposers
                     b.proposers.add(m)
+                for m in pl.joiners.all(): # add joiners to bill
+                    b.joiners.add(m)
                 pl.bill = b # assign this bill to this PP
                 pl.save()
 
@@ -1396,9 +1422,12 @@ class Command(NoArgsCommand):
 
                 # try to find a private proposal this decision is referencing
                 try:
-                    pp_id = int(re.search(r'פ(\d+)'.decode('utf8'),d['title']).group(1))
+                    pp_id = int(re.search(r'פ/?(\d+)'.decode('utf8'),d['title']).group(1))
                     re.search(r'[2009|2010|2011|2012]'.decode('utf8'),d['title']).group(0)   # just make sure its about the right years
                     pp = PrivateProposal.objects.get(proposal_id=pp_id)
+                    logger.debug("GovL.id = %d is matched to pp.id=%d, "
+                                 "bill.id=%d" % (decision.id, pp.id,
+                                                 pp.bill.id))
                     decision.bill = pp.bill
                     decision.save()
                 except AttributeError: # one of the regex failed
@@ -1417,6 +1446,7 @@ class Command(NoArgsCommand):
         dump_to_file = options.get('dump-to-file', False)
         update = options.get('update', False)
         laws = options.get('laws',False)
+        committees = options.get('committees', False)
         
         if all_options:
             download = True
@@ -1424,7 +1454,8 @@ class Command(NoArgsCommand):
             process = True
             dump_to_file = True
 
-        if (all([not(all_options),not(download),not(load),not(process),not(dump_to_file),not(update),not(laws)])):
+        if (all([not(all_options),not(download),not(load),not(process),
+                 not(dump_to_file),not(update),not(laws), not(committees)])):
             print "no arguments found. doing nothing. \ntry -h for help.\n--all to run the full syncdata flow.\n--update for an online dynamic update."
 
         if download:
@@ -1464,6 +1495,10 @@ class Command(NoArgsCommand):
             self.update_gov_law_decisions()
             self.correct_votes_matching()
             logger.debug('finished update')
+
+        if committees:
+            self.get_protocols()
+            logger.debug('finished committees update')
 
 
 def iso_year_start(iso_year):
