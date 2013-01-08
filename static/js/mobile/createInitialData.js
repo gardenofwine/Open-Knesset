@@ -10,16 +10,16 @@ function AndroidNotifyUpdate(){
 	var previosVersion = localStorage.getItem('version');
 
 	if (previosVersion === null || parseInt(previosVersion) < 3){
-		var title = "×¢×“×›×•×Ÿ ×’×¨×¡×”";
-		var text = "×§×™×™×ž×ª ×’×¨×¡×” ×—×“×©×” ×œ××¤×œ×™×§×¦×™×”. ×œ×—×¦×• ××™×©×•×¨ ×›×“×™ ×œ×¢×“×›×Ÿ ×›×¢×ª";
+		var title = "עדכון גרסה";
+		var text = "קיימת גרסה חדשה לאפליקציה. לחצו אישור כדי להוריד אותה כעת.";
 		Ext.Msg.show({
 			buttons: [
 				{
-					text : "××™×©×•×¨",
+					text : "אישור",
 					itemId:'ok'
 				},
 				{
-					text : "×‘×™×˜×•×œ",
+					text : "ביטול",
 					itemId:'cancel'
 				}
 			],
