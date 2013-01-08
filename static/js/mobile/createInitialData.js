@@ -6,6 +6,44 @@ var slimData;
 var slimDataMap;
 var stringImageListForDownload;
 
+function AndroidNotifyUpdate(){
+	var previosVersion = localStorage.getItem('version');
+
+	if (previosVersion === null || parseInt(previosVersion) < 3){
+		var title = "×¢×“×›×•×Ÿ ×’×¨×¡×”";
+		var text = "×§×™×™×ž×ª ×’×¨×¡×” ×—×“×©×” ×œ××¤×œ×™×§×¦×™×”. ×œ×—×¦×• ××™×©×•×¨ ×›×“×™ ×œ×¢×“×›×Ÿ ×›×¢×ª";
+		Ext.Msg.show({
+			buttons: [
+				{
+					text : "××™×©×•×¨",
+					itemId:'ok'
+				},
+				{
+					text : "×‘×™×˜×•×œ",
+					itemId:'cancel'
+				}
+			],
+			fn : function(itemId){
+				if (itemId === 'ok'){
+					window.open('market://details?id=org.oknesset', "_blank");
+				}
+			},
+			msg: text,
+			title: title,
+			icon  : Ext.MessageBox.QUESTION,
+		});
+	}
+}
+
+function notifyUpdate(){
+	if (isAndroid()){
+		AndroidNotifyUpdate();
+	}	
+}
+
+notifyUpdate();
+
+
 var OKnessetParser = new function(){
 	var callbackFunction = null;
 
